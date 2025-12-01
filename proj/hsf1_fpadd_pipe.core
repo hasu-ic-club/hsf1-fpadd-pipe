@@ -1,0 +1,77 @@
+CAPI=2:
+name: hasunosora:arith:fpadd_pipe:0.1a1
+description: Pipelined Parameterized Precision Floating Point Adder
+
+filesets:
+  include:
+    files:
+      - include/hsf1_macros.svh:
+          is_include_file: true
+    file_type: systemVerilogSource
+  pkg:
+    depend:
+      - ">=hasunosora:infra:include:0.1a0"
+      - ">=hasunosora:infra:typedefs_pkg:0.1a0"
+    files:
+      - pkg/hsf1_typedef_pkg.sv
+    file_type: systemVerilogSource
+  rtl:
+    depend:
+      - ">=hasunosora:infra:include:0.1a0"
+      - ">=hasunosora:infra:typedefs_pkg:0.1a0"
+      - ">=hasunosora:dpath:skid_buffer:0.1a0"
+    files:
+      - rtl/alu/hsf1_alu.sv
+      - rtl/alu/hsf1_cadder.sv
+      - rtl/common/hsf1_grs_lshift.sv
+      - rtl/common/hsf1_grs_rshift.sv
+      - rtl/common/hsf1_lzc.sv
+      - rtl/postproc/hsf1_grs_round.sv
+      - rtl/postproc/hsf1_postproc.sv
+      - rtl/preproc/hsf1_bvd.sv
+      - rtl/preproc/hsf1_preproc.sv
+      - rtl/preproc/hsf1_sp_result_gen.sv
+      - rtl/hsf1_fpadd_pipe.sv
+    file_type: systemVerilogSource
+  cocotb:
+    files:
+      - tb/cocotb/hsf1_wrapper_test.py : {file_type: user, copyto: .}
+      - tb/cocotb/FloatingPoint.py : {file_type: user, copyto: .}
+      - tb/cocotb/FpAdderAgent.py : {file_type: user, copyto: .}
+      - tb/cocotb/FpAdderScoreboard.py : {file_type: user, copyto: .}
+      - tb/cocotb/FpAdderTestbench.py : {file_type: user, copyto: .}
+      - tb/cocotb/FpAdderTransactions.py : {file_type: user, copyto: .}
+  sim_script:
+    files:
+      - tb/script/xrun.tcl
+    file_type: tclSource
+  
+targets:
+  default: &default
+    filesets:
+      - include
+      - pkg
+      - rtl
+  sim:
+    <<: *default
+    filesets_append:
+      - cocotb
+      - sim_script
+    default_tool: xcelium
+    toplevel: hsf1_fpadd_pipe
+    tools:
+      xcelium:
+        xrun_options:
+          - -64bit
+          - -sv
+          - -access +rwc -accessreg +rwc
+          - -debug -classlinedebug -linedebug -source_debug -plidebug -fsmdebug
+          - -ml_uvm -uvmlinedebug -uvmaccess
+          - +define+USE_DEFAULT_NETTYPE_WIRE
+          - -date -dumpstack -negdelay
+          - -lwdgen
+          - -delay_mode zero
+          - -sequdp_nba_delay
+          - -coverage all -covoverwrite -covtest hsf1_fpadd_pipe
+    description: Cocotb verification of this IP"
+
