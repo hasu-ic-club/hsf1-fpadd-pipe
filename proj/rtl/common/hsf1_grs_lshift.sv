@@ -23,7 +23,7 @@
 // EMAIL:     apertureelectronic@outlook.com
 //-------------------------------------------------------------------------
 // RELEASE VERSION: 0.2
-// VERSION DESCRIPTION: First Edition
+// VERSION DESCRIPTION: Corner-cases fixed Edition
 //-------------------------------------------------------------------------
 // RELEASES:
 // VERSION    AUTHOR        RELEASE DATE  DESCRIPTION
