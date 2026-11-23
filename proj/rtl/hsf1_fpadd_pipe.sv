@@ -1,28 +1,28 @@
 //+FHDR--------------------------------------------------------------------
 // Copyright (C) 2025 Hasunosora IC Design Club
 // MIT License
-// Permission is hereby granted, free of charge, to any person obtaining a 
-// copy of this design and associated documentation files (the “Design”), 
-// to deal in the Design without restriction, including without limitation 
-// the rights to use, copy, modify, merge, publish, distribute, sublicense, 
-// and/or sell copies of the Design, and to permit persons to whom the 
+// Permission is hereby granted, free of charge, to any person obtaining a
+// copy of this design and associated documentation files (the “Design”),
+// to deal in the Design without restriction, including without limitation
+// the rights to use, copy, modify, merge, publish, distribute, sublicense,
+// and/or sell copies of the Design, and to permit persons to whom the
 // Design is furnished to do so, subject to the following conditions:
-// The above copyright notice and this permission notice shall be included 
+// The above copyright notice and this permission notice shall be included
 // in all copies or substantial portions of the Design.
 //
-// THE DESIGN IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, 
-// EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF 
-// MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. 
-// IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, 
-// DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, 
-// TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE 
+// THE DESIGN IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND,
+// EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+// MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+// IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+// DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+// TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 // DESIGN OR THE USE OR OTHER DEALINGS IN THE DESIGN.
 //-------------------------------------------------------------------------
 // FILE NAME: hsf1_fpadd_pipe.sv
 // AUTHOR:    Onodera Tsusaki
 // EMAIL:     apertureelectronic@outlook.com
 //-------------------------------------------------------------------------
-// RELEASE VERSION: 0.1a1
+// RELEASE VERSION: 0.2
 // VERSION DESCRIPTION: First Edition
 //-------------------------------------------------------------------------
 // RELEASES:
@@ -34,6 +34,8 @@
 //                                        Move leading zero counter (LZC) to
 //                                        ALU stage for performance optimi-
 //                                        zation
+// 0.2        O. Tsusaki    2026/11/23    Passing the rounding mode to pre-process
+//                                        stage to handle the both zero saturation
 //-------------------------------------------------------------------------
 // PURPOSE: Pipelined floating-point adder
 //
@@ -42,7 +44,7 @@
 // PARAMETER NAME  RANGE           DESCRIPTION             DEFAULT VALUE
 // EXPONENT_WIDTH  1-32            Exponent bit width      8
 // MANTISSA_WIDTH  1-128           Mantissa bit width      23
-// FP_ROUND_MOD    fp_round_mode_s Floating point rounding FP_ROUND_MODE_TIES_TO_EVEN
+// FP_ROUND_MODE   fp_round_mode_s Floating point rounding FP_ROUND_MODE_TIES_TO_EVEN
 //                                 mode
 //-FHDR--------------------------------------------------------------------
 
@@ -82,9 +84,9 @@ import hsf1_typedef_pkg::*;
     input  logic                  result_ready,
 
     // Exception output (sync with result)
-    output logic                  exception_out,    // Indicate the result has exception value (NaN/overflow)
+    output logic                  exception_out,    // Indicate the result has exception value (NaN/Infinite)
     output logic                  nan_out,          // Indicate the result is NaN
-    output logic                  inf_out           // Indicate the result is infinite (overflow)
+    output logic                  inf_out           // Indicate the result is infinite
 );
 
 `HSF1_FP_TYPEDEF(EXPONENT_WIDTH, MANTISSA_WIDTH);
@@ -141,7 +143,8 @@ postproc_out_dp_s     output_dp;
 hsf1_preproc
 #(
     .EXPONENT_WIDTH(EXPONENT_WIDTH),
-    .MANTISSA_WIDTH(MANTISSA_WIDTH)
+    .MANTISSA_WIDTH(MANTISSA_WIDTH),
+    .FP_ROUND_MODE (FP_ROUND_MODE )
 )
 preproc_inst
 (

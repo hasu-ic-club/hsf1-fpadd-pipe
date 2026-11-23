@@ -5,32 +5,32 @@
 
 
 #project folders
-add_folder {src}  
-add_folder {src/preproc}  
-add_folder {src/postproc}  
-add_folder {src/alu}  
-add_folder {src/common}  
+add_folder {rtl}  
+add_folder {rtl/preproc}  
+add_folder {rtl/postproc}  
+add_folder {rtl/alu}  
+add_folder {rtl/common}  
 add_folder {infra}  
-add_folder {infra/src}  
-add_folder {infra/src/datapath}  
+add_folder {infra/rtl}  
+add_folder {infra/rtl/datapath}  
 add_folder {infra/pkg}  
 add_folder {pkg}  
 
 #project files
 add_file -verilog -vlog_std sysv -folder {infra/pkg} "../fusesoc_libraries/hasunosora-hdl-infra.git/proj/pkg/hs_ifr_misc_typedefs_pkg.sv"
-add_file -verilog -vlog_std sysv -folder {infra/src/datapath} "../fusesoc_libraries/hasunosora-hdl-infra.git/proj/src/datapath/hs_dpath_skid_buffer.sv"
+add_file -verilog -vlog_std sysv -folder {infra/rtl/datapath} "../fusesoc_libraries/hasunosora-hdl-infra.git/proj/rtl/datapath/hs_dpath_skid_buffer.sv"
 add_file -verilog -vlog_std sysv -folder {pkg} "../proj/pkg/hsf1_typedef_pkg.sv"
-add_file -verilog -vlog_std sysv -folder {src} "../proj/src/hsf1_fpadd_pipe.sv"
-add_file -verilog -vlog_std sysv -folder {src/preproc} "../proj/src/preproc/hsf1_bvd.sv"
-add_file -verilog -vlog_std sysv -folder {src/preproc} "../proj/src/preproc/hsf1_preproc.sv"
-add_file -verilog -vlog_std sysv -folder {src/preproc} "../proj/src/preproc/hsf1_sp_result_gen.sv"
-add_file -verilog -vlog_std sysv -folder {src/postproc} "../proj/src/postproc/hsf1_grs_round.sv"
-add_file -verilog -vlog_std sysv -folder {src/postproc} "../proj/src/postproc/hsf1_postproc.sv"
-add_file -verilog -vlog_std sysv -folder {src/common} "../proj/src/common/hsf1_grs_lshift.sv"
-add_file -verilog -vlog_std sysv -folder {src/common} "../proj/src/common/hsf1_grs_rshift.sv"
-add_file -verilog -vlog_std sysv -folder {src/common} "../proj/src/common/hsf1_lzc.sv"
-add_file -verilog -vlog_std sysv -folder {src/alu} "../proj/src/alu/hsf1_alu.sv"
-add_file -verilog -vlog_std sysv -folder {src/alu} "../proj/src/alu/hsf1_cadder.sv"
+add_file -verilog -vlog_std sysv -folder {rtl} "../proj/rtl/hsf1_fpadd_pipe.sv"
+add_file -verilog -vlog_std sysv -folder {rtl/preproc} "../proj/rtl/preproc/hsf1_bvd.sv"
+add_file -verilog -vlog_std sysv -folder {rtl/preproc} "../proj/rtl/preproc/hsf1_preproc.sv"
+add_file -verilog -vlog_std sysv -folder {rtl/preproc} "../proj/rtl/preproc/hsf1_sp_result_gen.sv"
+add_file -verilog -vlog_std sysv -folder {rtl/postproc} "../proj/rtl/postproc/hsf1_grs_round.sv"
+add_file -verilog -vlog_std sysv -folder {rtl/postproc} "../proj/rtl/postproc/hsf1_postproc.sv"
+add_file -verilog -vlog_std sysv -folder {rtl/common} "../proj/rtl/common/hsf1_grs_lshift.sv"
+add_file -verilog -vlog_std sysv -folder {rtl/common} "../proj/rtl/common/hsf1_grs_rshift.sv"
+add_file -verilog -vlog_std sysv -folder {rtl/common} "../proj/rtl/common/hsf1_lzc.sv"
+add_file -verilog -vlog_std sysv -folder {rtl/alu} "../proj/rtl/alu/hsf1_alu.sv"
+add_file -verilog -vlog_std sysv -folder {rtl/alu} "../proj/rtl/alu/hsf1_cadder.sv"
 
 
 #implementation: "rev_1"

@@ -1,28 +1,28 @@
 //+FHDR--------------------------------------------------------------------
 // Copyright (C) 2025 Hasunosora IC Design Club
 // MIT License
-// Permission is hereby granted, free of charge, to any person obtaining a 
-// copy of this design and associated documentation files (the “Design”), 
-// to deal in the Design without restriction, including without limitation 
-// the rights to use, copy, modify, merge, publish, distribute, sublicense, 
-// and/or sell copies of the Design, and to permit persons to whom the 
+// Permission is hereby granted, free of charge, to any person obtaining a
+// copy of this design and associated documentation files (the “Design”),
+// to deal in the Design without restriction, including without limitation
+// the rights to use, copy, modify, merge, publish, distribute, sublicense,
+// and/or sell copies of the Design, and to permit persons to whom the
 // Design is furnished to do so, subject to the following conditions:
-// The above copyright notice and this permission notice shall be included 
+// The above copyright notice and this permission notice shall be included
 // in all copies or substantial portions of the Design.
 //
-// THE DESIGN IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, 
-// EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF 
-// MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. 
-// IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, 
-// DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, 
-// TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE 
+// THE DESIGN IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND,
+// EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+// MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+// IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+// DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+// TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 // DESIGN OR THE USE OR OTHER DEALINGS IN THE DESIGN.
 //-------------------------------------------------------------------------
 // FILE NAME: hsf1_postproc.sv
 // AUTHOR:    Onodera Tsusaki
 // EMAIL:     apertureelectronic@outlook.com
 //-------------------------------------------------------------------------
-// RELEASE VERSION: 0.1a1
+// RELEASE VERSION: 0.2
 // VERSION DESCRIPTION: First Edition
 //-------------------------------------------------------------------------
 // RELEASES:
@@ -31,6 +31,12 @@
 // 0.1a1      O. Tsusaki    2025/11/30    Move leading zero counter (LZC) to
 //                                        ALU stage for performance optimi-
 //                                        zation
+// 0.2        O. Tsusaki    2026/11/23    Process the sign situation that
+//                                        both operands are zero,
+//                                        and the rounding mode is TOWARD NEGATIVE.
+//                                        Move the overflow to infinite determination
+//                                        to post-proc stage.
+//                                        Fix the packaging and flags output.
 //-------------------------------------------------------------------------
 // PURPOSE: Postprocess stage of pipelined floating point adder
 //
@@ -98,6 +104,11 @@ logic                  hidden_bit;
 lzc_t                  mant_result_lzc;
 logic                  lzc_lt_exp;
 
+// Overflow flags
+logic                  promote_subnormal;
+logic                  finite_ovfl;
+logic                  ovfl_to_inf;
+
 // Left shift amount for normalize
 fp_exp_t               lshift_amount;
 
@@ -118,12 +129,13 @@ logic                  final_rnd_to_inf;
 fp_s                   result_fp;
 
 // Assign all zero determination
-assign mant_all_zero     = flags_in.mant_sum_zero && ~flags_in.grs.guard && ~flags_in.grs.round;
+// Fix on 0.2, use the input flag for mantissa sum zero
+assign mant_all_zero     = flags_in.mant_sum_zero;
 
 // Assign the hidden bit
 assign hidden_bit        = mant_in[MANTISSA_WIDTH];
 
-// LZC of mantissa result 
+// LZC of mantissa result
 assign mant_result_lzc   = lzc_in;
 
 // Determine the normalize left shift amount
@@ -202,23 +214,67 @@ grs_round_inst
     .rnd_cout    (rnd_cout            )
 );
 
+// Add on 0.2
+// Determine the overflow flags
+
+// A denormalized number overflowed to normalized
+assign promote_subnormal = (ralign_exp == '0) && rnd_mant[MANTISSA_WIDTH];
+
+// Overflow to finite max
+always_comb begin : finite_ovfl_dete
+    if (flags_in.result_nan || flags_in.result_pass) begin
+        finite_ovfl = '0;
+    end
+    else if ((EXPONENT_WIDTH == 1) && promote_subnormal) begin
+        finite_ovfl = '1;
+    end
+    else if ((ralign_exp == MAX_EXPONENT) || (rnd_cout && (ralign_exp == EDGE_EXPONENT))) begin
+        finite_ovfl = '1;
+    end
+    else begin
+        finite_ovfl = '0;
+    end
+end : finite_ovfl_dete
+
+// Determine what should the core do when there was really a overflow occurred
+// by differente rounding mode
+`GENERATE_START
+if (FP_ROUND_MODE == FP_ROUND_MODE_TIES_TO_EVEN) begin : ovfl_inf_ties_even
+    assign ovfl_to_inf = '1;
+end : ovfl_inf_ties_even
+else if (FP_ROUND_MODE == FP_ROUND_MODE_TOWARD_POSITIVE) begin : ovfl_inf_to_pos
+    assign ovfl_to_inf = !flags_in.result_sign;
+end : ovfl_inf_to_pos
+else if (FP_ROUND_MODE == FP_ROUND_MODE_TOWARD_NEGATIVE) begin : ovfl_inf_to_neg
+    assign ovfl_to_inf = flags_in.result_sign;
+end : ovfl_inf_to_neg
+else begin : ovfl_inf_other
+    assign ovfl_to_inf = '0;
+end : ovfl_inf_other
+`GENERATE_END
+
 // Final realign / fix
+// Fix and add on 0.2, use new method to determine the overflow
 always_comb begin : final_fix
-    if (rnd_cout) begin
-        // Round and overflow to next exponent
-        if (ralign_exp == EDGE_EXPONENT) begin
-            // Overflow to infinity
+    if (finite_ovfl) begin
+        if (ovfl_to_inf) begin
             result_exp       = MAX_EXPONENT;
             result_mant      = '0;
             final_rnd_to_inf = '1;
         end
         else begin
-            result_exp       = ralign_exp + 'd1;                // Right shift for re-align
-            result_mant      = rnd_mant[1 +: $bits(fp_mant_t)]; // Right shift 1 bit and hidden bit truncate
+            result_exp       = EDGE_EXPONENT;
+            result_mant      = '1;
             final_rnd_to_inf = '0;
         end
     end
-    else if (rnd_mant[$bits(fp_mant_t)] && (~|ralign_exp)) begin
+    else if (rnd_cout) begin
+        // Round and overflow to next exponent
+        result_exp       = ralign_exp + 'd1;                // Right shift for re-align
+        result_mant      = rnd_mant[1 +: $bits(fp_mant_t)]; // Right shift 1 bit and hidden bit truncate
+        final_rnd_to_inf = '0;
+    end
+    else if (promote_subnormal) begin
         // A denormalized number overflowed to normalized
         result_exp       = EXPONENT_WIDTH'(1);
         result_mant      = rnd_mant[0 +: $bits(fp_mant_t)]; // Hidden bit truncate
@@ -247,7 +303,10 @@ always_comb begin : result_mux
         result_fp.exp      = exp_in;
     end
     else begin
-        result_fp.sign     = (mant_all_zero && !flags_in.result_inf) ? '0 : flags_in.result_sign;
+        // Fix on 0.2, determine the all zero sign by rounding mode
+        result_fp.sign     = mant_all_zero ?
+        (FP_ROUND_MODE == FP_ROUND_MODE_TOWARD_NEGATIVE) :
+        flags_in.result_sign;
         result_fp.mantissa = result_mant;
         result_fp.exp      = result_exp;
     end

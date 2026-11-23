@@ -22,12 +22,13 @@
 // AUTHOR:    Onodera Tsusaki
 // EMAIL:     apertureelectronic@outlook.com
 //-------------------------------------------------------------------------
-// RELEASE VERSION: 0.1a0
+// RELEASE VERSION: 0.2
 // VERSION DESCRIPTION: First Edition
 //-------------------------------------------------------------------------
 // RELEASES:
 // VERSION    AUTHOR        RELEASE DATE  DESCRIPTION
-// 0.1a0      O. Tsusaki    2025/11/26     First Edition
+// 0.1a0      O. Tsusaki    2025/11/26    First Edition
+// 0.2        O. Tsusaki    2026/11/23    Add both operands zero output 
 //-------------------------------------------------------------------------
 // PURPOSE: Special result generator for floating point adder
 //
@@ -59,6 +60,7 @@ module hsf1_sp_result_gen
 
     // Special result output
     output logic                  result_nan,   // Result is NaN (high-priority)
+    output logic                  both_zero,    // Both operators are zero
     output logic                  result_pass,  // Directly pass operator A or B to result (low-priority)
     output logic                  pass_a_b,     // Select A or B to pass-through
     output logic                  result_inf,   // Result is infinity
@@ -127,6 +129,8 @@ always_comb begin : result_nan_dete
     end
 end : result_nan_dete
 
+// Add on 0.2, both zero determination
+assign both_zero   = op_a_zero && op_b_zero;
 assign result_pass = op_a_zero || op_b_zero || op_a_inf || op_b_inf;
 assign pass_a_b    = op_a_zero || op_b_inf;
 assign result_inf  = op_a_inf || op_b_inf;

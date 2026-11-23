@@ -1,28 +1,28 @@
 //+FHDR--------------------------------------------------------------------
 // Copyright (C) 2025 Hasunosora IC Design Club
 // MIT License
-// Permission is hereby granted, free of charge, to any person obtaining a 
-// copy of this design and associated documentation files (the “Design”), 
-// to deal in the Design without restriction, including without limitation 
-// the rights to use, copy, modify, merge, publish, distribute, sublicense, 
-// and/or sell copies of the Design, and to permit persons to whom the 
+// Permission is hereby granted, free of charge, to any person obtaining a
+// copy of this design and associated documentation files (the “Design”),
+// to deal in the Design without restriction, including without limitation
+// the rights to use, copy, modify, merge, publish, distribute, sublicense,
+// and/or sell copies of the Design, and to permit persons to whom the
 // Design is furnished to do so, subject to the following conditions:
-// The above copyright notice and this permission notice shall be included 
+// The above copyright notice and this permission notice shall be included
 // in all copies or substantial portions of the Design.
 //
-// THE DESIGN IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, 
-// EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF 
-// MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. 
-// IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, 
-// DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, 
-// TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE 
+// THE DESIGN IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND,
+// EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+// MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+// IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+// DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+// TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 // DESIGN OR THE USE OR OTHER DEALINGS IN THE DESIGN.
 //-------------------------------------------------------------------------
 // FILE NAME: hsf1_preproc.sv
 // AUTHOR:    Onodera Tsusaki
 // EMAIL:     apertureelectronic@outlook.com
 //-------------------------------------------------------------------------
-// RELEASE VERSION: 0.1a1
+// RELEASE VERSION: 0.2
 // VERSION DESCRIPTION: First Edition
 //-------------------------------------------------------------------------
 // RELEASES:
@@ -31,6 +31,8 @@
 // 0.1a1      O. Tsusaki    2025/11/30    Move right pre-align of Y's mantissa
 //                                        to pre-proc stage for performance
 //                                        optimization
+// 0.2        O. Tsusaki    2026/11/23    Fix the output sign of both zero operands
+//                                        in all rounding modes
 //-------------------------------------------------------------------------
 // PURPOSE: Preprocess stage of pipelined floating point adder
 //
@@ -53,8 +55,9 @@
 module hsf1_preproc
 import hsf1_typedef_pkg::*;
 #(
-    parameter int EXPONENT_WIDTH = 8,
-    parameter int MANTISSA_WIDTH = 23,
+    parameter int             EXPONENT_WIDTH = 8,
+    parameter int             MANTISSA_WIDTH = 23,
+    parameter fp_round_mode_s FP_ROUND_MODE  = FP_ROUND_MODE_TIES_TO_EVEN,
     `LP_MODULE int OP_WIDTH = 1 + EXPONENT_WIDTH + MANTISSA_WIDTH
 )
 (
@@ -91,6 +94,9 @@ fp_ext_mant_t ext_mant_b;
 // Fixed exponent (denormalized number's exponent to 1)
 fp_exp_t      fixed_exp_a;
 fp_exp_t      fixed_exp_b;
+
+// Zero determination flag
+logic         both_zero;
 
 // Bypass flags
 logic         result_pass;
@@ -138,14 +144,15 @@ hsf1_sp_result_gen
 )
 sp_result_gen_inst
 (
-    .op_a_in    (op_a_in               ),
-    .op_b_in    (op_b_in               ),
-    .result_nan (flags.result_nan      ),
-    .result_pass(result_pass           ),
-    .pass_a_b   (result_pass_a_b       ),
-    .result_inf (flags.result_inf      ),
-    .op_a_denorm(op_a_denorm           ),
-    .op_b_denorm(op_b_denorm           )
+    .op_a_in    (op_a_in         ),
+    .op_b_in    (op_b_in         ),
+    .result_nan (flags.result_nan),
+    .both_zero  (both_zero       ),
+    .result_pass(result_pass     ),
+    .pass_a_b   (result_pass_a_b ),
+    .result_inf (flags.result_inf),
+    .op_a_denorm(op_a_denorm     ),
+    .op_b_denorm(op_b_denorm     )
 );
 
 // Extend mantissa with hidden bit
@@ -186,7 +193,16 @@ end : op_swap
 
 // Result sign determination
 always_comb begin : result_sign_dete
-    if (result_pass) begin
+    // Add on 0.2, both zero branch
+    if (both_zero) begin
+        if (FP_ROUND_MODE == FP_ROUND_MODE_TOWARD_NEGATIVE) begin
+            flags.result_sign = op_a_fp.sign | op_b_fp.sign;
+        end
+        else begin
+            flags.result_sign = op_a_fp.sign & op_b_fp.sign;
+        end
+    end
+    else if (result_pass) begin
         // When bypass enabled, pass corresponding sign for result
         flags.result_sign = result_pass_a_b ? op_b_fp.sign : op_a_fp.sign;
     end

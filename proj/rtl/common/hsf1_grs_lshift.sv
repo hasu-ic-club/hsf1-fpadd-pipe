@@ -22,12 +22,14 @@
 // AUTHOR:    Onodera Tsusaki
 // EMAIL:     apertureelectronic@outlook.com
 //-------------------------------------------------------------------------
-// RELEASE VERSION: 0.1a0
+// RELEASE VERSION: 0.2
 // VERSION DESCRIPTION: First Edition
 //-------------------------------------------------------------------------
 // RELEASES:
 // VERSION    AUTHOR        RELEASE DATE  DESCRIPTION
 // 0.1a0      O. Tsusaki    2025/11/27    First Edition
+// 0.2        O. Tsusaki    2026/11/23    Fix the behaviour of the shifter 
+//                                        when the data width is small
 //-------------------------------------------------------------------------
 // PURPOSE: Unsigned left shifter with GRS rounding bit recording
 //
@@ -77,11 +79,11 @@ logic          [VLD_SFT_AMOUNT_WIDTH - 1:0] vld_sft;                            
 logic          [TOTAL_DWIDTH - 1:0]         bsft_data            [SFT_STAGES + 1];
 
 // Valid shift amount truncate
-assign vld_sft      = sft_in[VLD_SFT_AMOUNT_WIDTH - 1:0];
+// Fix on 0.2, the bit-width of sft-in may smaller than the VLD_SFT_AMOUNT_WIDTH
+assign vld_sft          = VLD_SFT_AMOUNT_WIDTH'($unsigned(sft_in));
 
 // Input layer
 assign bsft_data[0] = {data_in, grs_in.guard, grs_in.round, grs_in.sticky};
-
 
 // Barrel shifter
 `GENERATE_START
